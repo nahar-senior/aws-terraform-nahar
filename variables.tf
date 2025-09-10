@@ -6,7 +6,7 @@
 variable "prefix" {
   type        = string
   description = "Prefix for naming all resources - ensures unique and identifiable resource names"
-  default     = "databricks-demo"
+  default     = "nahar-tf"
   
   # Used for: VPC names, S3 buckets, IAM roles, security groups, etc.
   # Example: prefix "my-company" creates resources like "my-company-vpc", "my-company-rootbucket"
