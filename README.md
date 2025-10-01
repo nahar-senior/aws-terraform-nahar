@@ -1,98 +1,162 @@
 # Databricks on AWS with Terraform
 
-A modular Terraform configuration for deploying Databricks workspaces on AWS with Unity Catalog support.
+A production-ready Terraform configuration implementing the two-stage deployment pattern for Databricks on AWS with Unity Catalog support.
 
-## 🏗️ Architecture
+## Architecture
 
-This repository provides a complete infrastructure-as-code solution for Databricks on AWS, including:
+This repository solves the "chicken and egg" problem with Databricks provider configuration by implementing a two-stage deployment pattern:
 
-- **AWS Infrastructure**: VPC, subnets, security groups, S3 bucket, IAM roles
-- **Databricks Workspace**: Enterprise-tier workspace with Unity Catalog
-- **Cluster Management**: Interactive cluster with proper permissions
-- **Service Principal Integration**: Automated admin access setup
+- **Stage 1 (base-infra)**: AWS infrastructure + Databricks workspace creation
+- **Stage 2 (workspace-infra)**: Workspace-level resources using remote state
 
-## 📁 Repository Structure
+### Two-Stage Deployment Pattern
+
+The two-stage approach is necessary because:
+1. Databricks workspace URL is required to configure the workspace provider
+2. Workspace URL is only available after workspace creation
+3. Single-stage deployment creates circular dependency issues
+
+This pattern uses Terraform remote state to pass outputs between stages, ensuring proper provider configuration timing.
+
+## Repository Structure
 
 ```
-├── modules/
-│   ├── base_infra/          # AWS infrastructure (VPC, S3, IAM)
-│   ├── databricks_workspace/ # Databricks workspace and Unity Catalog
-│   └── cluster_management/   # Databricks cluster and permissions
-├── main.tf                  # Root module configuration
-├── variables.tf             # Input variables
-├── outputs.tf               # Output values
-├── terraform.tfvars.example # Configuration template
-└── README.md               # This file
+├── base-infra/              # Stage 1: Account-level infrastructure
+│   ├── aws-infra/           # AWS infrastructure (VPC, S3, IAM)
+│   ├── databricks-infra/    # Databricks workspace and Unity Catalog
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   └── terraform.tfvars.example
+│
+└── workspace-infra/         # Stage 2: Workspace-level resources
+    ├── cluster-management/  # Databricks clusters
+    ├── main.tf
+    ├── variables.tf
+    ├── outputs.tf
+    └── terraform.tfvars.example
 ```
 
-## 🚀 Quick Start
+## Prerequisites
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd aws-terraform-nahar
-   ```
+- Terraform >= 1.0
+- AWS CLI configured with appropriate permissions
+- Databricks Account Admin access
+- Service Principal with Account Admin permissions
 
-2. **Configure your variables**
+## Deployment Instructions
+
+### Stage 1: Deploy Base Infrastructure
+
+1. **Configure variables**
    ```bash
+   cd base-infra/
    cp terraform.tfvars.example terraform.tfvars
    # Edit terraform.tfvars with your values
    ```
 
-3. **Initialize Terraform**
+2. **Deploy infrastructure**
    ```bash
    terraform init
-   ```
-
-4. **Deploy the infrastructure**
-   ```bash
    terraform plan
    terraform apply
    ```
 
-## 🔧 Configuration
+### Stage 2: Deploy Workspace Infrastructure
+
+3. **Configure workspace variables**
+   ```bash
+   cd ../workspace-infra/
+   cp terraform.tfvars.example terraform.tfvars
+   # Edit terraform.tfvars with your values
+   ```
+
+4. **Deploy workspace resources**
+   ```bash
+   terraform init
+   terraform plan
+   terraform apply
+   ```
+
+## Configuration
 
 ### Required Variables
 
-- `client_id`: Databricks service principal client ID
-- `client_secret`: Databricks service principal secret
-- `databricks_account_id`: Your Databricks account ID
+#### Base Infrastructure (Stage 1)
+- `databricks_account_id`: Your Databricks Account ID
+- `client_id`: Service Principal Client ID for account-level operations
+- `client_secret`: Service Principal Client Secret
+- `region`: AWS region for deployment (default: us-west-2)
+
+#### Workspace Infrastructure (Stage 2)
+- `client_id`: Service Principal Client ID for workspace-level operations
+- `client_secret`: Service Principal Client Secret
 
 ### Optional Variables
 
-- `region`: AWS region (default: us-west-2)
 - `cidr_block`: VPC CIDR block (default: 10.0.0.0/16)
-- `tags`: Resource tags
+- `tags`: Resource tags for organization and cost tracking
 
-## 📋 Prerequisites
+## Infrastructure Components
 
-- Terraform >= 1.0
-- AWS CLI configured
-- Databricks service principal with account admin permissions
-- Databricks CLI installed and authenticated
+### AWS Infrastructure
+- VPC with public and private subnets across multiple AZs
+- NAT Gateway for private subnet internet access
+- VPC Endpoints for S3, STS, and Kinesis
+- IAM cross-account role for Databricks
+- S3 bucket for root storage with encryption
 
-## 🔒 Security
+### Databricks Infrastructure
+- Databricks workspace with Unity Catalog
+- Metastore creation and assignment
+- Network configuration for workspace
+- Storage configuration for root bucket
 
-- All sensitive data is excluded via `.gitignore`
-- Service principal credentials are required for deployment
-- IAM roles follow least-privilege principles
-- Security groups are configured per Databricks requirements
+### Workspace Resources
+- Unity Catalog compatible cluster
+- Auto-scaling configuration (1-3 workers)
+- Latest LTS Databricks Runtime
+- Proper data security mode for Unity Catalog
 
-## 📚 Documentation
+## Security Considerations
 
-For detailed configuration options and best practices, see the individual module documentation in the `modules/` directory.
+- All sensitive files are excluded via .gitignore
+- Service Principal credentials should be stored securely
+- State files are excluded from version control
+- Resources are tagged for cost tracking and compliance
 
-## ⚠️ Disclaimer
+## State Management
 
-This code is for educational and demonstration purposes only. For production use, please review and customize the configuration according to your organization's security and compliance requirements.
+- Each stage maintains its own Terraform state
+- Stage 2 references Stage 1 outputs via remote state
+- State files should be stored in secure backend (S3, Azure Storage, etc.)
 
-## 🤝 Contributing
+## Troubleshooting
+
+### Common Issues
+
+1. **Provider Configuration Error**: Ensure Stage 1 is deployed before Stage 2
+2. **Authentication Error**: Verify Service Principal credentials and permissions
+3. **Resource Conflicts**: Check for existing resources with same names
+
+### State Management
+
+- Each stage maintains its own Terraform state
+- Stage 2 references Stage 1 outputs via remote state
+- State files should be stored in secure backend (S3, Azure Storage, etc.)
+
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Submit a pull request
+4. Test thoroughly
+5. Submit a pull request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Disclaimer
+
+This code is provided for educational and demonstration purposes. It should not be used in production without proper security review and testing. The authors are not responsible for any security issues or costs incurred from using this code.
