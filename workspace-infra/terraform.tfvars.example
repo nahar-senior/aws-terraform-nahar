@@ -1,0 +1,14 @@
+# Workspace Infrastructure Configuration
+# Copy this file to terraform.tfvars and customize as needed
+
+# ===== DATABRICKS SERVICE PRINCIPAL =====
+client_id     = "your_workspace_service_principal_client_id"
+client_secret = "your_workspace_service_principal_client_secret"
+
+# ===== RESOURCE TAGS =====
+tags = {
+  Environment = "demo"
+  Project     = "databricks-terraform"
+  Owner       = "your-email@company.com"
+  Team        = "data-engineering"
+}

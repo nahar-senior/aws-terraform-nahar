@@ -1,0 +1,22 @@
+# Base Infrastructure Configuration
+# Copy this file to terraform.tfvars and customize as needed
+
+# ===== DATABRICKS ACCOUNT =====
+databricks_account_id = "your_databricks_account_id"
+
+# ===== DATABRICKS SERVICE PRINCIPAL =====
+client_id     = "your_service_principal_client_id"
+client_secret = "your_service_principal_client_secret"
+
+# ===== AWS CONFIGURATION =====
+region     = "us-west-2"
+cidr_block = "10.0.0.0/16"
+
+# ===== RESOURCE TAGS =====
+tags = {
+  Project     = "Databricks Infrastructure"
+  Environment = "demo"
+  ManagedBy   = "Terraform"
+  Owner       = "your-email@company.com"
+  Team        = "data-engineering"
+}
